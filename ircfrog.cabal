@@ -20,13 +20,14 @@ executable ircfrog
   build-depends:       base >= 4.7 && < 5
                      , bytestring == 0.10.*
                      , utf8-string == 1.0.*
+                     , vector == 0.11.*
                      , text == 1.2.*
                      , async == 2.1.*
                      , stm == 2.4.*
                      , stm-chans == 3.0.*
                      , irc-client == 0.4.*
                      , irc-conduit == 0.2.*
-                     , brick == 0.9
+                     , brick == 0.10
                      , microlens == 0.4.*
                      , microlens-th == 0.4.*
                      , template-haskell == 2.11.*

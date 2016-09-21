@@ -43,7 +43,7 @@ extra-deps:
   - irc-client-0.4.3.0
   - irc-conduit-0.2.0.0  # dependency of irc-client
   - irc-0.6.1.0  # dependency of irc-client
-  - brick-0.9
+  - brick-0.10
   - text-zipper-0.7.1  # dependency of brick
 
 # Override default flag values for local packages and extra-deps

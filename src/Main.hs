@@ -20,8 +20,13 @@ import qualified Control.Concurrent.Async as Async
 import qualified Control.Concurrent.STM as STM
 import qualified Control.Concurrent.STM.TBMChan as STM
 
+import qualified Brick.Main as BM
+import Brick.AttrMap (attrMap)
+import qualified Graphics.Vty as V
+import qualified Data.Default as Default
+
 import IrcFrog.TestView
-import IrcFrog.View
+import qualified IrcFrog.View as View
 import qualified IrcFrog.State as State
 
 import qualified IrcFrog.Types as T
@@ -30,20 +35,41 @@ main :: IO ()
 main = do
     [nick] <- getArgs
     let (freenodeHost, freenodePort) = ("chat.freenode.net", 7000)
-    freenodeConn <- IRC.connectWithTLS' IRC.stdoutLogger "chat.freenode.net" 7000 1
+    -- freenodeConn <- IRC.connectWithTLS "chat.freenode.net" 7000 1
     freenodeInChan <- STM.atomically $ STM.newTBMChan 30 :: IO (STM.TBMChan IRC.UnicodeEvent)
+
+    tmpChan <- STM.atomically $ STM.newTBMChan 10
+
     let network = T.Network
             { T.host = freenodeHost
             , T.port = freenodePort
             , T.nick = Text.pack nick
-            , T.outboundChan = IRC._sendqueue freenodeConn
+            -- , T.outboundChan = IRC._sendqueue freenodeConn
+            , T.outboundChan = tmpChan
             , T.inboundChan = freenodeInChan
             , T.channels = []
             }
-    _ <- Async.async $ runIrcConnection freenodeConn (Text.pack nick) freenodeInChan
-    Conc.threadDelay 2000000 *> joinChan "#gougoutest" (IRC._sendqueue freenodeConn)
-    testView
+    -- _ <- Async.async $ runIrcConnection freenodeConn (Text.pack nick) freenodeInChan
+    -- Conc.threadDelay 2000000 *> joinChan "#gougoutest" (IRC._sendqueue freenodeConn)
+    startApp network
+    -- testView
     -- run "chat.freenode.net" 7000 (T.pack nick)
+
+
+startApp :: T.Network -> IO ()
+startApp initialNetwork = do
+    let app = BM.App { BM.appDraw = View.render
+                     , BM.appStartEvent = return
+                     , BM.appHandleEvent = State.handleEvent
+                     , BM.appAttrMap = const (attrMap V.defAttr [])
+                     , BM.appLiftVtyEvent = id
+                     , BM.appChooseCursor = State.appChooseCursor
+                     }
+    chan <- Conc.newChan
+    let initialState = State.initialState { T.networks = [initialNetwork] }
+    _ <- BM.customMain (V.mkVty Default.def) chan app initialState
+    putStrLn "yoo"
+
 
 runIrcConnection
     :: IRC.ConnectionConfig ()

@@ -22,3 +22,11 @@ appChooseCursor
     -> [Brick.CursorLocation Text]
     -> Maybe (Brick.CursorLocation Text)
 appChooseCursor _ = headMay
+
+initialState :: Types.AppState
+initialState =
+    Types.AppState
+    { Types.networks = []
+    , Types.selectedNetwork = Nothing
+    , Types.selectedChannel = Nothing
+    }
