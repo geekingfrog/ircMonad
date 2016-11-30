@@ -27,6 +27,8 @@ executable ircfrog
                      , stm-chans == 3.0.*
                      , irc-client == 0.4.*
                      , irc-conduit == 0.2.*
+                     , conduit-combinators == 1.0.8.*
+                     , stm-conduit == 3.0.*
                      , brick == 0.10
                      , microlens == 0.4.*
                      , microlens-th == 0.4.*

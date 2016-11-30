@@ -40,9 +40,10 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-  - irc-client-0.4.3.0
-  - irc-conduit-0.2.0.0  # dependency of irc-client
-  - irc-0.6.1.0  # dependency of irc-client
+  - irc-conduit-0.2.0.0
+  - conduit-combinators-1.0.8.3
+  - conduit-1.2.8
+  # - irc-0.6.1.0  # dependency of irc-client
   - brick-0.10
   - text-zipper-0.7.1  # dependency of brick
 
