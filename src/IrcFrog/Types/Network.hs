@@ -4,6 +4,7 @@ import Data.Text (Text)
 import Data.ByteString (ByteString)
 import Control.Monad.Trans.Reader (ReaderT)
 import Control.Monad.Trans.State (StateT)
+import qualified Control.Concurrent.STM as STM
 import qualified Control.Concurrent.STM.TBMChan as STM
 
 import qualified Network.IRC.Conduit as IRC
@@ -22,8 +23,16 @@ data NetworkEnv = NetworkEnv
     , _port :: !Int
     }
 
+data NetworkConnectionState =
+      Disconnected
+    | Disconnecting
+    | Connected
+    | Connecting
+    deriving (Show, Eq)
+
 data NetworkState = NetworkState
     { _nick :: !IrcUser
+    , _connectionState :: STM.TVar NetworkConnectionState
     }
 
 -- The monad in which a network connection is run

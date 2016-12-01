@@ -3,7 +3,8 @@
 module Main where
 
 -- import Data.Monoid ((<>))
--- import Control.Monad (forever, void)
+import Control.Monad (forever)
+import Control.Exception (bracket)
 -- import Control.Monad.IO.Class (liftIO)
 -- import qualified Data.ByteString as B
 -- import qualified Data.ByteString.UTF8 as B
@@ -16,8 +17,8 @@ module Main where
 -- import Network.IRC.Conduit.Internal.Messages (IrcMessage)
 --
 -- import System.Environment (getArgs)
--- import qualified Control.Concurrent as Conc
--- import qualified Control.Concurrent.Async as Conc
+import qualified Control.Concurrent as Conc
+import qualified Control.Concurrent.Async as Conc
 -- import qualified Control.Concurrent.STM as STM
 -- import qualified Control.Concurrent.STM.TBMChan as STM
 --
@@ -37,6 +38,22 @@ import qualified IrcFrog.Irc.Network as TempNetwork
 
 
 main = TempNetwork.connectNetwork (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
+
+-- main = do
+--     t1 <- Conc.async $ do
+--         putStrLn "In child thread, spawning a subtask"
+--         bracket (Conc.async noisy) (\a -> putStrLn "Cancelling noisy task" >> Conc.cancel a) (\a -> Conc.wait a >> putStrLn "child done")
+--         Conc.threadDelay 10000000
+--         putStrLn "child thread done"
+--     Conc.threadDelay 1500000
+--     putStrLn "Killing child thread"
+--     Conc.cancel t1
+--     putStrLn "Child Killed, now going to sleep for a while"
+--     Conc.threadDelay 2000000
+--     putStrLn "done"
+
+
+-- noisy = forever $ (putStrLn "yo!") >> Conc.threadDelay 1000000
 
 -- main :: IO ()
 -- main = do
