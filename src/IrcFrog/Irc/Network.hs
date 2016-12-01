@@ -4,60 +4,65 @@ module IrcFrog.Irc.Network
 where
 
 import Control.Monad (forever)
-import qualified Control.Concurrent as Conc
+import Control.Monad.IO.Class (liftIO)
 import qualified Control.Concurrent.Async as Conc
 
-import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
-import Data.Text (Text)
-
-import qualified Data.ByteString as ByteString
-import Data.ByteString (ByteString)
 
 import qualified Control.Concurrent.STM as STM
 import qualified Control.Concurrent.STM.TBMChan as STM
 import qualified Data.Conduit.TMChan as STMC
 
 import qualified Network.IRC.Conduit as IRC
-import Conduit
+import Conduit as C
+
+import qualified Control.Monad.Trans.Reader as Reader
+import qualified Control.Monad.Trans.State as State
+
+import IrcFrog.Types.Network
+
+temp host port nick = connectNetwork (IrcHostname host) port (IrcUser nick)
+
+connectNetwork :: IrcHostname -> Int -> IrcUser -> IO NetworkEnv
+connectNetwork host port nick = do
+    sendingQ <- STM.newTBMChanIO 30
+    receivingQ <- STM.newTBMChanIO 30
+    let env = NetworkEnv {
+          _sendingQueue = sendingQ
+        , _receivingQueue = receivingQ
+        , _hostname = host
+        , _port = port
+        }
+
+    let initialState = NetworkState { _nick = nick }
+
+    -- run the network in a separate thread, and kill it if this thread is killed
+    -- Conc.withAsync (State.runStateT (Reader.runReaderT runNetwork env) initialState) (const $ return env)
+    _ <- Conc.concurrently (State.runStateT (Reader.runReaderT runNetwork env) initialState) (logQueue receivingQ)
+    return env
 
 
--- given a hostname, port and nick, will attempt to connect to the irc network
--- and return a pair of channel, one for inbound irc events, and another one to send messages.
-manageNetwork :: ByteString -> Int -> Text -> IO () -- (STM.TBMChan IRC.UnicodeEvent, STM.TBMChan IRC.UnicodeMessage)
-manageNetwork hostname port nick = do
-    rcvQueue <- STM.atomically $ STM.newTBMChan 30
+logQueue :: Show a => STM.TBMChan a -> IO ()
+logQueue chan = forever $ do
+    msg <- STM.atomically $ STM.readTBMChan chan
+    putStrLn $ "Message from server: " ++ show msg
 
-    let consumer = toConsumer $ STMC.sinkTBMChan rcvQueue True
-    let producer = do
-            lift $ print "producing ?"
-            yield (IRC.Nick $ Text.encodeUtf8 nick)
 
-    sendQueue <- STM.atomically $ STM.newTBMChan 30
+runNetwork :: StatefulNetwork
+runNetwork = do
+    env <- Reader.ask
+    state <- lift State.get
+    let IrcHostname hostname = _hostname env
+    let port = _port env
+    let IrcUser nick = _nick state
+
+    let consumer = C.toConsumer $ STMC.sinkTBMChan (_receivingQueue env) True
     antiflood <- liftIO $ IRC.floodProtector 1
-    let producer = toProducer $ STMC.sourceTBMChan sendQueue .| antiflood
+    let producer = C.toProducer $ STMC.sourceTBMChan (_sendingQueue env) .| antiflood
 
     let initialise = do
-            let nickMsg = IRC.rawMessage "NICK" [Text.encodeUtf8 nick]
+            let nickMsg = IRC.Nick (Text.encodeUtf8 nick)
             let userMsg = IRC.rawMessage "USER" [Text.encodeUtf8 nick, "0", "*", Text.encodeUtf8 nick]
-            let joinMsg = IRC.Join "#gougoutest"
-            putStrLn "writing message: "
-            print nickMsg
-            putStrLn ""
-            print userMsg
-            STM.atomically $ STM.writeTBMChan sendQueue nickMsg
-            STM.atomically $ STM.writeTBMChan sendQueue userMsg
-            STM.atomically $ STM.writeTBMChan sendQueue joinMsg
-
-    _ <- Conc.forkIO $ forever $ do
-        msg <- STM.atomically $ STM.readTBMChan rcvQueue
-        putStrLn $ "got message from server: " ++ show msg
-
-    _ <- Conc.async $ do
-        Conc.threadDelay 500000
-        print "sending message"
-        let msg = IRC.Privmsg "#gougoutest" (Right "yo !")
-        STM.atomically $ STM.writeTBMChan sendQueue msg
-
-    putStrLn "starting"
-    IRC.ircClient port hostname initialise consumer producer
+            STM.atomically $ STM.writeTBMChan (_sendingQueue env) nickMsg
+            STM.atomically $ STM.writeTBMChan (_sendingQueue env) userMsg
+    liftIO $ IRC.ircClient port hostname initialise consumer producer

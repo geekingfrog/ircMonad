@@ -36,3 +36,4 @@ executable ircfrog
                      , vty == 5.11.*
                      , data-default == 0.7.*
                      , safe == 0.3.*
+                     , transformers == 0.5.2.*

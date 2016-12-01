@@ -3,7 +3,7 @@
 module Main where
 
 -- import Data.Monoid ((<>))
--- import Control.Monad (forever)
+-- import Control.Monad (forever, void)
 -- import Control.Monad.IO.Class (liftIO)
 -- import qualified Data.ByteString as B
 -- import qualified Data.ByteString.UTF8 as B
@@ -17,7 +17,7 @@ module Main where
 --
 -- import System.Environment (getArgs)
 -- import qualified Control.Concurrent as Conc
--- import qualified Control.Concurrent.Async as Async
+-- import qualified Control.Concurrent.Async as Conc
 -- import qualified Control.Concurrent.STM as STM
 -- import qualified Control.Concurrent.STM.TBMChan as STM
 --
@@ -31,10 +31,12 @@ module Main where
 -- import qualified IrcFrog.State as State
 --
 -- import qualified IrcFrog.Types as T
---
+
+import IrcFrog.Types.Network
 import qualified IrcFrog.Irc.Network as TempNetwork
 
-main = TempNetwork.manageNetwork "irc.freenode.net" 6667 "testingstuff"
+
+main = TempNetwork.connectNetwork (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
 
 -- main :: IO ()
 -- main = do
