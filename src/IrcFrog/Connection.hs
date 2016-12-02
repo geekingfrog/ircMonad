@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module IrcFrog.Irc.Connection
+module IrcFrog.Connection
 where
 
 import qualified Data.Maybe as Maybe
@@ -22,6 +22,7 @@ import qualified Control.Monad.Trans.Reader as Reader
 import qualified Control.Monad.Trans.State as State
 
 import IrcFrog.Types.Connection
+import IrcFrog.Types.Message
 
 temp host port nick = connectNetwork (IrcHostname host) port (IrcUser nick)
 

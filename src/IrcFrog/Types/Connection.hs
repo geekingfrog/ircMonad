@@ -13,7 +13,6 @@ import qualified Network.IRC.Conduit as IRC
 
 import IrcFrog.Types.TH (suffixLenses)
 
-data IrcUser = IrcUser !Text deriving (Show, Eq)
 data IrcHostname = IrcHostname !ByteString deriving (Show, Eq)
 
 

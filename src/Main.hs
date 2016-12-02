@@ -37,7 +37,10 @@ import qualified Control.Concurrent.Chan as Chan
 -- import qualified IrcFrog.Types as T
 
 import IrcFrog.Types.Connection
-import qualified IrcFrog.Irc.Connection as Connection
+import IrcFrog.Types.Message
+
+import qualified IrcFrog.Connection as Connection
+import qualified IrcFrog.Types.Message
 
 import qualified IrcFrog.Types.Client as ClientTypes
 import qualified IrcFrog.Client as Client
@@ -45,7 +48,10 @@ import qualified IrcFrog.Client as Client
 main = do
     let testConn = Connection.connectNetwork (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
     appChan <- Chan.newChan
-    Conc.concurrently testConn (Client.run appChan)
+    Conc.withAsync testConn $ \conn -> do
+        _ <- Client.run appChan
+        Conc.cancel conn
+        putStrLn "Tearing down everything"
 
 -- main = do
 --     t1 <- Conc.async $ do
