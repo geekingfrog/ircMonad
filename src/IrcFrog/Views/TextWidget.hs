@@ -11,4 +11,4 @@ renderTextWidget messages =
     let
         lines = fmap Widgets.txt messages
     in
-        foldl' (<+>) Widgets.emptyWidget lines
+        foldl' (<=>) Widgets.emptyWidget lines

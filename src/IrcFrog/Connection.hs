@@ -46,10 +46,10 @@ connectNetwork host port nick = do
     -- return env
 
 
-logQueue :: Show a => STM.TBMChan a -> IO ()
-logQueue chan = forever $ do
-    msg <- STM.atomically $ STM.readTBMChan chan
-    putStrLn $ "Message from server: " ++ show msg
+-- logQueue :: Show a => STM.TBMChan a -> IO ()
+-- logQueue chan = forever $ do
+--     msg <- STM.atomically $ STM.readTBMChan chan
+--     putStrLn $ "Message from server: " ++ show msg
 
 
 runNetwork :: StatefulNetwork
@@ -73,7 +73,7 @@ runNetwork = do
 
     let initialise = do
             STM.atomically $ STM.modifyTVar' (connectionState state) (const Connecting)
-            putStrLn $ "Connecting to network " ++ show rawHostname
+            -- putStrLn $ "Connecting to network " ++ show rawHostname
             let nickMsg = IRC.Nick (Text.encodeUtf8 nick)
             let userMsg = IRC.rawMessage "USER" [Text.encodeUtf8 nick, "0", "*", Text.encodeUtf8 nick]
             STM.atomically $ STM.writeTBMChan (sendingQueue env) nickMsg
@@ -98,7 +98,7 @@ pingHandler env ev =
       (IRC.Server _, IRC.Ping servername mbTargetServer) -> do
           let targetServer = Maybe.fromMaybe servername mbTargetServer
           let pongMsg = IRC.Pong targetServer
-          putStrLn $ "got a ping, responding with a pong to " ++ show targetServer
+          -- putStrLn $ "got a ping, responding with a pong to " ++ show targetServer
           STM.atomically $ STM.writeTBMChan (sendingQueue env) pongMsg
       _ -> return ()
 
@@ -112,5 +112,5 @@ connectionHandler env state ev =
           -- fire an event to tell the network is now connected
           STM.atomically $ STM.writeTBMChan (receivingQueue env) (ConnectionEvent Connected)
           -- TODO remove this log later
-          putStrLn $ "Network " ++ show (hostname env) ++ " is now connectod"
+          -- putStrLn $ "Network " ++ show (hostname env) ++ " is now connectod"
       _ -> return()
