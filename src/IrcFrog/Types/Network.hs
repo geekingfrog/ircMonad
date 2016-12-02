@@ -17,7 +17,7 @@ data IrcHostname = IrcHostname !ByteString deriving (Show)
 data NetworkEnv = NetworkEnv
     { _sendingQueue :: STM.TBMChan IRC.IrcMessage
     -- ^ Queue to send message to this network
-    , _receivingQueue :: STM.TBMChan (Either ByteString IRC.IrcEvent)
+    , _receivingQueue :: STM.TBMChan NetworkEvent
     -- ^ All messages from the network are written in this queue
     , _hostname :: IrcHostname
     , _port :: !Int
@@ -37,3 +37,8 @@ data NetworkState = NetworkState
 
 -- The monad in which a network connection is run
 type StatefulNetwork = ReaderT NetworkEnv (StateT NetworkState IO) ()
+
+data NetworkEvent =
+      MsgEvent IRC.IrcEvent
+    | ConnectionEvent NetworkConnectionState
+    deriving (Show, Eq)

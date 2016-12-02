@@ -3,6 +3,7 @@
 module IrcFrog.Irc.Network
 where
 
+import qualified Data.Maybe as Maybe
 import Control.Monad (forever)
 import Control.Monad.IO.Class (liftIO)
 import qualified Control.Concurrent.Async as Conc
@@ -61,27 +62,56 @@ runNetwork = do
     let port = _port env
     let IrcUser nick = _nick state
 
-    let consumer = C.toConsumer $ C.iterMC (basicHandler state) .| STMC.sinkTBMChan (_receivingQueue env) True
+    let consumer = C.toConsumer $
+            discardUnknownMessages
+         .| C.iterMC (pingHandler env)
+         .| C.iterMC (connectionHandler env state)
+         .| C.mapC MsgEvent
+         .| STMC.sinkTBMChan (_receivingQueue env) True
+
     antiflood <- liftIO $ IRC.floodProtector 1
     let producer = C.toProducer $ STMC.sourceTBMChan (_sendingQueue env) .| antiflood
 
     let initialise = do
             STM.atomically $ STM.modifyTVar' (_connectionState state) (const Connecting)
+            putStrLn $ "Connecting to network " ++ show hostname
             let nickMsg = IRC.Nick (Text.encodeUtf8 nick)
             let userMsg = IRC.rawMessage "USER" [Text.encodeUtf8 nick, "0", "*", Text.encodeUtf8 nick]
             STM.atomically $ STM.writeTBMChan (_sendingQueue env) nickMsg
             STM.atomically $ STM.writeTBMChan (_sendingQueue env) userMsg
     liftIO $ IRC.ircClient port hostname initialise consumer producer
 
-basicHandler :: NetworkState -> (Either ByteString IRC.IrcEvent) -> IO ()
-basicHandler state (Right ev) =
-    case IRC._source ev of -- (IRC.Numeric n args)) = putStrLn $ "Got numeric arg " ++ show n
-      IRC.Server serverName -> handleServerMessage state (IRC._message ev)
+-- If the message cannot be parsed, just discard it
+-- TODO maybe log it later ?
+discardUnknownMessages :: ConduitM (Either ByteString IRC.IrcEvent) IRC.IrcEvent IO ()
+discardUnknownMessages = loop where
+    loop = do
+        msg <- await
+        case msg of
+          Nothing -> return ()
+          Just (Left _) -> loop
+          Just (Right ev) -> yield ev >> loop
+
+-- take care of answering PONG to PING requests
+pingHandler :: NetworkEnv -> IRC.IrcEvent -> IO ()
+pingHandler env ev =
+    case (IRC._source ev, IRC._message ev) of
+      (IRC.Server _, IRC.Ping servername mbTargetServer) -> do
+          let targetServer = Maybe.fromMaybe servername mbTargetServer
+          let pongMsg = IRC.Pong targetServer
+          putStrLn $ "got a ping, responding with a pong to " ++ show targetServer
+          STM.atomically $ STM.writeTBMChan (_sendingQueue env) pongMsg
       _ -> return ()
 
-basicHandler _ _ = return ()
 
-handleServerMessage :: NetworkState -> IRC.IrcMessage -> IO ()
--- handle welcome message
-handleServerMessage state (IRC.Numeric 1 args) = STM.atomically $ STM.modifyTVar' (_connectionState state) (const Connected)
-handleServerMessage _ _ = return ()
+-- Manage the connection state and publish it
+connectionHandler :: NetworkEnv -> NetworkState -> IRC.IrcEvent -> IO ()
+connectionHandler env state ev =
+    case (IRC._source ev, IRC._message ev) of
+      (IRC.Server _, IRC.Numeric 1 _args) -> do
+          STM.atomically $ STM.modifyTVar' (_connectionState state) (const Connected)
+          -- fire an event to tell the network is now connected
+          STM.atomically $ STM.writeTBMChan (_receivingQueue env) (ConnectionEvent Connected)
+          -- TODO remove this log later
+          putStrLn $ "Network " ++ show (_hostname env) ++ " is now connectod"
+      _ -> return()
