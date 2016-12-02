@@ -1,7 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module IrcFrog.Connection
-where
+-- module State (
+--     makeInitialState
+--   , resetState
+--   , appHandleEvent
+--   , hasCollision
+--   , collideWithSnake
+--   , collideWithWall
+--   ) where
+
+
+module IrcFrog.Connection (
+      connectNetwork
+    , makeConnectionEnv
+    ) where
 
 import qualified Data.Maybe as Maybe
 import Control.Monad (forever)
@@ -24,24 +36,26 @@ import qualified Control.Monad.Trans.State as State
 import IrcFrog.Types.Connection
 import IrcFrog.Types.Message
 
-temp host port nick = connectNetwork (IrcHostname host) port (IrcUser nick)
-
-connectNetwork :: IrcHostname -> Int -> IrcUser -> IO ConnectionEnv
-connectNetwork host port nick = do
+makeConnectionEnv :: IrcHostname -> Int -> IrcUser -> IO ConnectionEnv
+makeConnectionEnv host port nick = do
     sendingQ <- STM.newTBMChanIO 100
     receivingQ <- STM.newTBMChanIO 100
-    let env = ConnectionEnv {
+    return ConnectionEnv {
           sendingQueue = sendingQ
         , receivingQueue = receivingQ
         , hostname = host
         , port = port
         }
 
+
+
+connectNetwork :: ConnectionEnv -> IO ()
+connectNetwork env = do
     initialConnState <- STM.newTVarIO Disconnected
     let initialState = ConnectionState { connectionState = initialConnState }
 
     -- run the network in a separate thread, and kill it if this thread is killed
-    Conc.withAsync (State.runStateT (Reader.runReaderT runNetwork env) initialState) (\a -> Conc.wait a >> return env)
+    Conc.withAsync (State.runStateT (Reader.runReaderT runNetwork env) initialState) (const $ return ())
     -- _ <- Conc.concurrently (State.runStateT (Reader.runReaderT runNetwork env) initialState) (logQueue receivingQ)
     -- return env
 

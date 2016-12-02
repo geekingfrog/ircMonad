@@ -3,7 +3,7 @@
 module Main where
 
 -- import Data.Monoid ((<>))
-import Control.Monad (forever)
+import Control.Monad (forever, forM_)
 import Control.Exception (bracket)
 -- import Control.Monad.IO.Class (liftIO)
 -- import qualified Data.ByteString as B
@@ -22,8 +22,8 @@ import qualified Control.Concurrent as Conc
 import qualified Control.Concurrent.Async as Conc
 import qualified Control.Concurrent.Chan as Chan
 
--- import qualified Control.Concurrent.STM as STM
--- import qualified Control.Concurrent.STM.TBMChan as STM
+import qualified Control.Concurrent.STM as STM
+import qualified Control.Concurrent.STM.TBMChan as STM
 --
 -- import qualified Brick.Main as BM
 -- import Brick.AttrMap (attrMap)
@@ -46,12 +46,20 @@ import qualified IrcFrog.Types.Client as ClientTypes
 import qualified IrcFrog.Client as Client
 
 main = do
-    let testConn = Connection.connectNetwork (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
+    testEnv <- Connection.makeConnectionEnv (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
     appChan <- Chan.newChan
-    Conc.withAsync testConn $ \conn -> do
+    Conc.withAsync (Conc.concurrently (Connection.connectNetwork testEnv) (forwardMessages testEnv appChan)) $ \stuff -> do
         _ <- Client.run appChan
-        Conc.cancel conn
+        Conc.cancel stuff
         putStrLn "Tearing down everything"
+
+forwardMessages env chan =
+    let
+        inChan = receivingQueue env
+    in
+        forever $ do
+            msg <- STM.atomically $ STM.readTBMChan inChan
+            forM_ msg (Chan.writeChan chan . ClientTypes.ConnectionEvent)
 
 -- main = do
 --     t1 <- Conc.async $ do
