@@ -17,8 +17,11 @@ import Control.Exception (bracket)
 -- import Network.IRC.Conduit.Internal.Messages (IrcMessage)
 --
 -- import System.Environment (getArgs)
+
 import qualified Control.Concurrent as Conc
 import qualified Control.Concurrent.Async as Conc
+import qualified Control.Concurrent.Chan as Chan
+
 -- import qualified Control.Concurrent.STM as STM
 -- import qualified Control.Concurrent.STM.TBMChan as STM
 --
@@ -33,11 +36,16 @@ import qualified Control.Concurrent.Async as Conc
 --
 -- import qualified IrcFrog.Types as T
 
-import IrcFrog.Types.Network
-import qualified IrcFrog.Irc.Network as TempNetwork
+import IrcFrog.Types.Connection
+import qualified IrcFrog.Irc.Connection as Connection
 
+import qualified IrcFrog.Types.Client as ClientTypes
+import qualified IrcFrog.Client as Client
 
-main = TempNetwork.connectNetwork (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
+main = do
+    let testConn = Connection.connectNetwork (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
+    appChan <- Chan.newChan
+    Conc.concurrently testConn (Client.run appChan)
 
 -- main = do
 --     t1 <- Conc.async $ do

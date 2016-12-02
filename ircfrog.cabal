@@ -20,6 +20,7 @@ executable ircfrog
   build-depends:       base >= 4.7 && < 5
                      , bytestring == 0.10.*
                      , utf8-string == 1.0.*
+                     , containers == 0.5.7.*
                      , vector == 0.11.*
                      , text == 1.2.*
                      , async == 2.1.*
@@ -29,11 +30,11 @@ executable ircfrog
                      , irc-conduit == 0.2.*
                      , conduit-combinators == 1.0.8.*
                      , stm-conduit == 3.0.*
-                     , brick == 0.10
+                     , brick == 0.14
+                     , vty == 5.12.*
                      , microlens == 0.4.*
                      , microlens-th == 0.4.*
                      , template-haskell == 2.11.*
-                     , vty == 5.11.*
                      , data-default == 0.7.*
                      , safe == 0.3.*
                      , transformers == 0.5.2.*
