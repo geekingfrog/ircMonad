@@ -18,29 +18,32 @@ import qualified Brick.Widgets.Center as W
 import qualified Brick.Widgets.Edit as WE
 
 type AppState = WE.Editor Text Text
-data AppEvent = Ev deriving (Show, Eq)
+
+data AppEvent =
+    Ev
+    deriving (Show, Eq)
 
 testView :: IO ()
 testView = do
-    let app = M.App { M.appDraw = drawUI
-                    , M.appStartEvent = return
-                    , M.appHandleEvent = handleEvent
-                    , M.appAttrMap = const (A.attrMap V.defAttr [])
-                    , M.appLiftVtyEvent = id
-                    , M.appChooseCursor = \_ locs -> (Just $ Prelude.head locs)
-                    }
+    let app =
+            M.App
+            { M.appDraw = drawUI
+            , M.appStartEvent = return
+            , M.appHandleEvent = handleEvent
+            , M.appAttrMap = const (A.attrMap V.defAttr [])
+            , M.appLiftVtyEvent = id
+            , M.appChooseCursor = \_ locs -> (Just $ Prelude.head locs)
+            }
     chan <- newChan
     let ed = WE.editorText "editorName" (W.txt . T.unlines) (Just 1) "Initial content"
     _ <- M.customMain (V.mkVty Default.def) chan app ed
     putStrLn "done"
 
 drawUI :: AppState -> [Brick.Widget Text]
-drawUI st = [ W.vBox
-    [ W.center $ W.str "foo"
-    , WE.renderEditor True st
-    ] ]
+drawUI st = [W.vBox [W.center $ W.str "foo", WE.renderEditor True st]]
 
 handleEvent :: AppState -> V.Event -> Brick.EventM Text (Brick.Next AppState)
-handleEvent st ev = case ev of
-    V.EvKey V.KEsc [] -> M.halt st
-    _ -> WE.handleEditorEvent ev st >>= M.continue
+handleEvent st ev =
+    case ev of
+        V.EvKey V.KEsc [] -> M.halt st
+        _ -> WE.handleEditorEvent ev st >>= M.continue

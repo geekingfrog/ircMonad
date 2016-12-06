@@ -8,7 +8,5 @@ import Brick.Widgets.Core as Widgets
 
 renderTextWidget :: [Text] -> Widget Text
 renderTextWidget messages =
-    let
-        lines = fmap Widgets.txt messages
-    in
-        foldl' (<=>) Widgets.emptyWidget lines
+    let lines = fmap Widgets.txt messages
+    in foldl' (<=>) Widgets.emptyWidget lines

@@ -11,10 +11,8 @@ import IrcFrog.Views.TextWidget (renderTextWidget)
 
 render :: Types.ClientState -> [Brick.Widget Text]
 render state =
-    let
-    in
-        [renderTextWidget ["foo", "bar", "baaaaaz"]]
-
+    let 
+    in [renderTextWidget ["foo", "bar", "baaaaaz"]]
 -- import Data.Text (Text)
 -- import qualified Data.Text as Text
 --

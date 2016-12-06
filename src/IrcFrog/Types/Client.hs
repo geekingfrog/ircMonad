@@ -33,9 +33,8 @@ data ClientState = ClientState
 
 suffixLenses ''ClientState
 
-
-data AppEvent =
-      VtyEvent VtyEvents.Event
+data AppEvent
+    = VtyEvent VtyEvents.Event
     | ConnectionEvent Connection.NetworkEvent
     deriving (Show, Eq)
 

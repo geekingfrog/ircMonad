@@ -17,7 +17,8 @@ run :: Chan.Chan Type.AppEvent -> IO Type.ClientState
 run chan = Brick.customMain (V.mkVty def) (Just chan) app State.initialState
 
 app :: Type.IrcApp
-app = Brick.App
+app =
+    Brick.App
     { Brick.appDraw = render
     , Brick.appChooseCursor = \_s _locations -> Nothing
     , Brick.appHandleEvent = tmpEventHandler
@@ -25,10 +26,8 @@ app = Brick.App
     , Brick.appAttrMap = const $ attrMap def []
     }
 
-
-tmpEventHandler
-    :: Type.ClientState
-    -> BT.BrickEvent Text Type.AppEvent
-    -> BT.EventM Text (BT.Next Type.ClientState)
+tmpEventHandler :: Type.ClientState
+                -> BT.BrickEvent Text Type.AppEvent
+                -> BT.EventM Text (BT.Next Type.ClientState)
 tmpEventHandler state _ = Brick.halt state
 -- tmpEventHandler state _ = Brick.continue state

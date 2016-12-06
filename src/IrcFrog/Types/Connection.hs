@@ -13,30 +13,29 @@ import qualified Network.IRC.Conduit as IRC
 
 import IrcFrog.Types.TH (suffixLenses)
 
-data IrcHostname = IrcHostname !ByteString deriving (Show, Eq)
-
+data IrcHostname =
+    IrcHostname !ByteString
+    deriving (Show, Eq)
 
 -- Different kind of events coming from a connection.
-data NetworkEvent =
-      MsgEvent IRC.IrcEvent
+data NetworkEvent
+    = MsgEvent IRC.IrcEvent
     | ConnectionEvent NetworkConnectionState
     deriving (Show, Eq)
 
-
-data NetworkConnectionState =
-      Disconnected
+data NetworkConnectionState
+    = Disconnected
     | Disconnecting
     | Connected
     | Connecting
     deriving (Show, Eq)
 
-
 -- immutable data about a connection.
 data ConnectionEnv = ConnectionEnv
     { sendingQueue :: STM.TBMChan IRC.IrcMessage
-    -- ^ Queue to send message to this network
+      -- ^ Queue to send message to this network
     , receivingQueue :: STM.TBMChan NetworkEvent
-    -- ^ All messages from the network are written in this queue
+      -- ^ All messages from the network are written in this queue
     , hostname :: IrcHostname
     , port :: !Int
     }

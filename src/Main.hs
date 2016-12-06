@@ -5,6 +5,7 @@ module Main where
 -- import Data.Monoid ((<>))
 import Control.Monad (forever, forM_)
 import Control.Exception (bracket)
+
 -- import Control.Monad.IO.Class (liftIO)
 -- import qualified Data.ByteString as B
 -- import qualified Data.ByteString.UTF8 as B
@@ -17,13 +18,13 @@ import Control.Exception (bracket)
 -- import Network.IRC.Conduit.Internal.Messages (IrcMessage)
 --
 -- import System.Environment (getArgs)
-
 import qualified Control.Concurrent as Conc
 import qualified Control.Concurrent.Async as Conc
 import qualified Control.Concurrent.Chan as Chan
 
 import qualified Control.Concurrent.STM as STM
 import qualified Control.Concurrent.STM.TBMChan as STM
+
 --
 -- import qualified Brick.Main as BM
 -- import Brick.AttrMap (attrMap)
@@ -35,7 +36,6 @@ import qualified Control.Concurrent.STM.TBMChan as STM
 -- import qualified IrcFrog.State as State
 --
 -- import qualified IrcFrog.Types as T
-
 import IrcFrog.Types.Connection
 import IrcFrog.Types.Message
 
@@ -46,21 +46,21 @@ import qualified IrcFrog.Types.Client as ClientTypes
 import qualified IrcFrog.Client as Client
 
 main = do
-    testEnv <- Connection.makeConnectionEnv (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
+    testEnv <-
+        Connection.makeConnectionEnv (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
     appChan <- Chan.newChan
-    Conc.withAsync (Conc.concurrently (Connection.connectNetwork testEnv) (forwardMessages testEnv appChan)) $ \stuff -> do
-        _ <- Client.run appChan
-        Conc.cancel stuff
-        putStrLn "Tearing down everything"
+    Conc.withAsync
+        (Conc.concurrently (Connection.connectNetwork testEnv) (forwardMessages testEnv appChan)) $
+        \stuff -> do
+            _ <- Client.run appChan
+            Conc.cancel stuff
+            putStrLn "Tearing down everything"
 
 forwardMessages env chan =
-    let
-        inChan = receivingQueue env
-    in
-        forever $ do
-            msg <- STM.atomically $ STM.readTBMChan inChan
-            forM_ msg (Chan.writeChan chan . ClientTypes.ConnectionEvent)
-
+    let inChan = receivingQueue env
+    in forever $
+       do msg <- STM.atomically $ STM.readTBMChan inChan
+          forM_ msg (Chan.writeChan chan . ClientTypes.ConnectionEvent)
 -- main = do
 --     t1 <- Conc.async $ do
 --         putStrLn "In child thread, spawning a subtask"
@@ -73,10 +73,7 @@ forwardMessages env chan =
 --     putStrLn "Child Killed, now going to sleep for a while"
 --     Conc.threadDelay 2000000
 --     putStrLn "done"
-
-
 -- noisy = forever $ (putStrLn "yo!") >> Conc.threadDelay 1000000
-
 -- main :: IO ()
 -- main = do
 --     [nick] <- getArgs
