@@ -47,6 +47,7 @@ extra-deps:
   - brick-0.14
   - vty-5.12
   - text-zipper-0.7.1  # dependency of brick
+  - datetime-0.3.1
   - hindent-5.2.1
   - haskell-src-exts-1.19.0
 

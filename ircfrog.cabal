@@ -38,3 +38,4 @@ executable ircfrog
                      , data-default == 0.7.*
                      , safe == 0.3.*
                      , transformers == 0.5.2.*
+                     , datetime >= 0.3.1 && < 0.4

@@ -4,8 +4,8 @@ module Main where
 
 -- import Data.Monoid ((<>))
 import Control.Monad (forever, forM_)
-import Control.Exception (bracket)
 
+-- import Control.Exception (bracket)
 -- import Control.Monad.IO.Class (liftIO)
 -- import qualified Data.ByteString as B
 -- import qualified Data.ByteString.UTF8 as B
@@ -18,7 +18,7 @@ import Control.Exception (bracket)
 -- import Network.IRC.Conduit.Internal.Messages (IrcMessage)
 --
 -- import System.Environment (getArgs)
-import qualified Control.Concurrent as Conc
+-- import qualified Control.Concurrent as Conc
 import qualified Control.Concurrent.Async as Conc
 import qualified Control.Concurrent.Chan as Chan
 
@@ -40,14 +40,18 @@ import IrcFrog.Types.Connection
 import IrcFrog.Types.Message
 
 import qualified IrcFrog.Connection as Connection
-import qualified IrcFrog.Types.Message
+import IrcFrog.Types.Network
 
 import qualified IrcFrog.Types.Client as ClientTypes
 import qualified IrcFrog.Client as Client
 
+main :: IO ()
 main = do
     testEnv <-
-        Connection.makeConnectionEnv (IrcHostname "irc.freenode.net") 6667 (IrcUser "testingstuff")
+        Connection.makeConnectionEnv
+            (NetworkHostname "irc.freenode.net")
+            6667
+            (IrcUser "testingstuff")
     appChan <- Chan.newChan
     Conc.withAsync
         (Conc.concurrently (Connection.connectNetwork testEnv) (forwardMessages testEnv appChan)) $
@@ -56,11 +60,16 @@ main = do
             Conc.cancel stuff
             putStrLn "Tearing down everything"
 
+-- Tag every message coming from
+forwardMessages :: ConnectionEnv -> Chan.Chan ClientTypes.AppEvent -> IO ()
 forwardMessages env chan =
-    let inChan = receivingQueue env
+    let inChan = ceReceivingQueue env
+        nid = ceNetworkId env
     in forever $
        do msg <- STM.atomically $ STM.readTBMChan inChan
-          forM_ msg (Chan.writeChan chan . ClientTypes.ConnectionEvent)
+          case msg of
+              Just m -> Chan.writeChan chan $ ClientTypes.ConnectionEvent nid m
+              Nothing -> return ()
 -- main = do
 --     t1 <- Conc.async $ do
 --         putStrLn "In child thread, spawning a subtask"

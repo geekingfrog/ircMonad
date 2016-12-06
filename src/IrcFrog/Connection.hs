@@ -14,7 +14,6 @@ module IrcFrog.Connection
   ) where
 
 import qualified Data.Maybe as Maybe
-import Control.Monad (forever)
 import Control.Monad.IO.Class (liftIO)
 import qualified Control.Concurrent.Async as Conc
 
@@ -33,17 +32,18 @@ import qualified Control.Monad.Trans.State as State
 
 import IrcFrog.Types.Connection
 import IrcFrog.Types.Message
+import IrcFrog.Types.Network
 
-makeConnectionEnv :: IrcHostname -> Int -> IrcUser -> IO ConnectionEnv
-makeConnectionEnv host port nick = do
+makeConnectionEnv :: NetworkHostname -> Int -> IrcUser -> IO ConnectionEnv
+makeConnectionEnv host port _nick = do
     sendingQ <- STM.newTBMChanIO 100
     receivingQ <- STM.newTBMChanIO 100
+    let nid = NetworkId host (NetworkPort port)
     return
         ConnectionEnv
-        { sendingQueue = sendingQ
-        , receivingQueue = receivingQ
-        , hostname = host
-        , port = port
+        { ceSendingQueue = sendingQ
+        , ceReceivingQueue = receivingQ
+        , ceNetworkId = nid
         }
 
 connectNetwork :: ConnectionEnv -> IO ()
@@ -58,17 +58,11 @@ connectNetwork env = do
         (State.runStateT (Reader.runReaderT runNetwork env) initialState)
         (const $ return ())
 
--- _ <- Conc.concurrently (State.runStateT (Reader.runReaderT runNetwork env) initialState) (logQueue receivingQ)
--- return env
--- logQueue :: Show a => STM.TBMChan a -> IO ()
--- logQueue chan = forever $ do
---     msg <- STM.atomically $ STM.readTBMChan chan
---     putStrLn $ "Message from server: " ++ show msg
 runNetwork :: StatefulNetwork
 runNetwork = do
     env <- Reader.ask
     state <- lift State.get
-    let IrcHostname rawHostname = hostname env
+    let (NetworkId (NetworkHostname rawHostname) (NetworkPort port)) = ceNetworkId env
     -- TODO pass nick somehow
     let nick = "testingstuff"
     let consumer =
@@ -76,18 +70,18 @@ runNetwork = do
             discardUnknownMessages .| C.iterMC (pingHandler env) .|
             C.iterMC (connectionHandler env state) .|
             C.mapC MsgEvent .|
-            STMC.sinkTBMChan (receivingQueue env) True
+            STMC.sinkTBMChan (ceReceivingQueue env) True
     antiflood <- liftIO $ IRC.floodProtector 1
-    let producer = C.toProducer $ STMC.sourceTBMChan (sendingQueue env) .| antiflood
+    let producer = C.toProducer $ STMC.sourceTBMChan (ceSendingQueue env) .| antiflood
     let initialise = do
             STM.atomically $ STM.modifyTVar' (connectionState state) (const Connecting)
             -- putStrLn $ "Connecting to network " ++ show rawHostname
             let nickMsg = IRC.Nick (Text.encodeUtf8 nick)
             let userMsg =
                     IRC.rawMessage "USER" [Text.encodeUtf8 nick, "0", "*", Text.encodeUtf8 nick]
-            STM.atomically $ STM.writeTBMChan (sendingQueue env) nickMsg
-            STM.atomically $ STM.writeTBMChan (sendingQueue env) userMsg
-    liftIO $ IRC.ircClient (port env) rawHostname initialise consumer producer
+            STM.atomically $ STM.writeTBMChan (ceSendingQueue env) nickMsg
+            STM.atomically $ STM.writeTBMChan (ceSendingQueue env) userMsg
+    liftIO $ IRC.ircClient port rawHostname initialise consumer producer
 
 -- If the message cannot be parsed, just discard it
 -- TODO maybe log it later ?
@@ -109,7 +103,7 @@ pingHandler env ev =
             let targetServer = Maybe.fromMaybe servername mbTargetServer
             let pongMsg = IRC.Pong targetServer
             -- putStrLn $ "got a ping, responding with a pong to " ++ show targetServer
-            STM.atomically $ STM.writeTBMChan (sendingQueue env) pongMsg
+            STM.atomically $ STM.writeTBMChan (ceSendingQueue env) pongMsg
         _ -> return ()
 
 -- Manage the connection state and publish it
@@ -119,7 +113,5 @@ connectionHandler env state ev =
         (IRC.Server _, IRC.Numeric 1 _args) -> do
             STM.atomically $ STM.modifyTVar' (connectionState state) (const Connected)
             -- fire an event to tell the network is now connected
-            STM.atomically $ STM.writeTBMChan (receivingQueue env) (ConnectionEvent Connected)
-        -- TODO remove this log later
-        -- putStrLn $ "Network " ++ show (hostname env) ++ " is now connectod"
+            STM.atomically $ STM.writeTBMChan (ceReceivingQueue env) (ConnectionEvent Connected)
         _ -> return ()

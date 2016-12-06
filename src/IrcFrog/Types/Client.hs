@@ -8,34 +8,33 @@ import qualified Data.Map.Strict as Map
 import qualified Brick.Main as Brick
 import qualified Graphics.Vty.Input.Events as VtyEvents
 
-import qualified IrcFrog.Types.Connection as Connection
+import IrcFrog.Types.Connection
+import IrcFrog.Types.Network
+import IrcFrog.Types.Message
+
 import qualified Network.IRC.Conduit as IRC
 
 import IrcFrog.Types.TH (suffixLenses)
 
 data ClientNetwork = ClientNetwork
-    { connectionInfo :: Connection.ConnectionEnv
-    , nick :: IRC.NickName Text
-    , connectionState :: Connection.NetworkConnectionState
+    { cnConnectionEnv :: ConnectionEnv
+    , cnNick :: IRC.NickName Text
+    , cnConnectionState :: NetworkConnectionState
+    , cnChannels :: Map.Map ChannelName Channel
     }
 
 suffixLenses ''ClientNetwork
 
-data NetworkList = NetworkList
-    { networks :: Map.Map Connection.IrcHostname ClientNetwork
-    }
-
-suffixLenses ''NetworkList
-
 data ClientState = ClientState
-    { networkList :: !NetworkList
+    { csNetworkList :: Map.Map NetworkId ClientNetwork
     }
 
 suffixLenses ''ClientState
 
 data AppEvent
     = VtyEvent VtyEvents.Event
-    | ConnectionEvent Connection.NetworkEvent
+    | ConnectionEvent !NetworkId
+                      !NetworkEvent
     deriving (Show, Eq)
 
 type IrcApp = Brick.App ClientState AppEvent Text
